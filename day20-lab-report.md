@@ -1,5 +1,7 @@
 # Day 20 Lab — Retention, Engagement & Habit Loop
 
+**Trần Nguyễn Anh Thư - 2A202600915**
+
 **Sản phẩm:** Academic Research Assistant / Literature Review AI
 
 **Tính năng kế thừa từ Day 18:** Claim Verification & Routing (Step ⑧⑨)
