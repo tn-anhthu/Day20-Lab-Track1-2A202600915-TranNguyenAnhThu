@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>ClaimVerifier — Prototype (Day 18 Lab)</title>
+<style>
+  :root{
+    --bg:#f5f6fa; --card:#fff; --ink:#1f2430; --muted:#6b7280;
+    --green:#16a34a; --green-bg:#e8f7ee;
+    --orange:#d97706; --orange-bg:#fff4e0;
+    --red:#dc2626; --red-bg:#fdeaea;
+    --gray:#6b7280; --gray-bg:#f1f0e8;
+    --priority:#b91c1c; --priority-bg:#fff0f0;
+    --blue:#2563eb; --blue-bg:#eaf1ff;
+    --border:#e5e7eb;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);margin:0;}
+  .app{max-width:920px;margin:0 auto;padding:24px 20px 80px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .subtitle{color:var(--muted);font-size:13px;margin:0 0 20px;}
+  nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;position:sticky;top:0;background:var(--bg);padding:10px 0;z-index:5;}
+  nav button{border:1px solid var(--border);background:var(--card);padding:8px 12px;border-radius:8px;font-size:12.5px;cursor:pointer;color:var(--ink);}
+  nav button.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .screen{display:none;}
+  .screen.active{display:block;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px;}
+  .panel h2{font-size:15px;margin:0 0 6px;}
+  .panel p.desc{color:var(--muted);font-size:13px;margin:0 0 14px;line-height:1.5;}
+  .header-note{background:var(--blue-bg);border:1px solid #cfe0ff;border-radius:10px;padding:10px 14px;font-size:13px;color:#1d4ed8;margin-bottom:16px;}
+  .progress-wrap{margin-bottom:6px;}
+  .progress-track{background:#e8eaf0;border-radius:8px;height:8px;overflow:hidden;margin-top:8px;}
+  .progress-fill{background:var(--blue);height:8px;width:0%;transition:width .4s ease;}
+  .progress-label{font-size:13px;color:var(--muted);}
+  .claim-list{display:flex;flex-direction:column;gap:10px;}
+  .claim-card{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:#fafbfc;}
+  .claim-text{font-size:13.5px;margin:0 0 8px;line-height:1.5;}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px;margin-right:6px;}
+  .badge.green{background:var(--green-bg);color:var(--green);}
+  .badge.orange{background:var(--orange-bg);color:var(--orange);}
+  .badge.red{background:var(--red-bg);color:var(--red);}
+  .badge.gray{background:var(--gray-bg);color:#7a6f3b;}
+  .badge.priority{background:var(--priority-bg);color:var(--priority);}
+  .src-link{font-size:12px;color:var(--blue);cursor:pointer;text-decoration:underline;background:none;border:none;padding:0;}
+  .row-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .btn{border:1px solid var(--border);background:#fff;padding:6px 12px;border-radius:7px;font-size:12.5px;cursor:pointer;}
+  .btn:hover{background:#f3f4f6;}
+  .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .btn.danger{color:var(--red);border-color:#f5c2c2;}
+  .btn.success{color:var(--green);border-color:#bfe6cc;}
+  .btn.small{font-size:11.5px;padding:4px 9px;}
+  .evidence-box{display:none;margin-top:10px;background:#fff;border:1px dashed var(--border);border-radius:8px;padding:10px 12px;font-size:12.5px;color:#374151;}
+  .evidence-box.open{display:block;}
+  .evidence-box .lbl{font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
+  .resolved-tag{font-size:12px;color:var(--muted);font-style:italic;}
+  .summary-line{font-size:12.5px;color:var(--muted);margin-top:14px;border-top:1px dashed var(--border);padding-top:10px;}
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
+  .compare-box{background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:12.5px;}
+  .compare-box .lbl{font-weight:600;font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;}
+  textarea.edit-box{width:100%;min-height:60px;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px;margin-top:8px;display:none;font-family:inherit;}
+  textarea.edit-box.open{display:block;}
+  .deleted-line{font-size:13px;color:var(--muted);background:#f7f7f7;border:1px dashed var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;}
+  .deleted-detail{display:none;margin-top:8px;font-size:12.5px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px;}
+  .deleted-detail.open{display:block;}
+  .tab-bar{display:flex;gap:6px;margin-bottom:12px;}
+  .tab-bar button{border:none;background:none;font-size:12.5px;color:var(--muted);padding:6px 4px;border-bottom:2px solid transparent;cursor:pointer;}
+  .tab-bar button.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:600;}
+  .tabpane{display:none;}
+  .tabpane.active{display:block;}
+  .banner{background:var(--orange-bg);border:1px solid #f3d8a6;color:#92400e;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none;}
+  .banner.show{display:block;}
+  .toggle-line{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .feedback-box{display:none;margin-top:8px;}
+  .feedback-box.open{display:block;}
+  .input-reason{width:100%;border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:12.5px;margin-top:6px;font-family:inherit;}
+  .note-learn{display:none;background:var(--blue-bg);border:1px solid #cfe0ff;color:#1d4ed8;border-radius:8px;padding:9px 12px;font-size:12.5px;margin-top:10px;}
+  .note-learn.show{display:block;}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;transition:all .3s ease;pointer-events:none;z-index:50;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-bottom:16px;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+  .strike{text-decoration:line-through;opacity:.55;}
+  footer.notebox{font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:14px;margin-top:24px;}
+  .header-line{display:flex;align-items:center;gap:8px;background:var(--blue-bg);border:1px solid #cfe0ff;border-radius:10px;padding:10px 14px;font-size:13px;color:#1d4ed8;margin-bottom:10px;}
+  .info-btn{border:1px solid #cfe0ff;background:#fff;color:#1d4ed8;width:20px;height:20px;border-radius:50%;font-size:11.5px;line-height:1;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;}
+  .header-detail{display:none;background:#fff;border:1px dashed #cfe0ff;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#374151;margin-bottom:10px;line-height:1.5;}
+  .header-detail.open{display:block;}
+  .legend.collapsed{display:none;}
+  .legend-toggle{font-size:12px;color:var(--blue);background:none;border:none;cursor:pointer;padding:0;margin-bottom:10px;text-decoration:underline;}
+  .progress-counter{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink);background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:14px;}
+  .progress-counter .ring{width:10px;height:10px;border-radius:50%;background:var(--orange);flex-shrink:0;}
+  .progress-counter.done .ring{background:var(--green);}
+  .activation-banner{display:none;background:var(--green-bg);border:1px solid #bfe6cc;color:#166534;border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13.5px;}
+  .activation-banner.show{display:block;animation:fade .3s ease;}
+  .activation-banner .cta{margin-top:8px;}
+  .auto-kept-toggle{font-size:12.5px;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;margin:6px 0 2px;display:block;}
+  .auto-kept-list{display:none;margin-top:8px;}
+  .auto-kept-list.open{display:block;}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>ClaimVerifier — Prototype mô phỏng (clickable)</h1>
+  <p class="subtitle">Feature slice: Claim Verification & Routing (Step ⑧⑨) — Academic Research Assistant. Đây là mô phỏng tương tác (không gọi API thật) để minh hoạ trạng thái AI, lựa chọn user, và đường chuyển — đi kèm file báo cáo .md.</p>
+
+  <nav id="nav"></nav>
+
+  <!-- SCREEN 1: ONBOARDING -->
+  <div class="screen active" data-screen="1">
+    <div class="panel">
+      <h2>Kịch bản 1 — Onboarding (P0, redesigned Day 20)</h2>
+      <p class="desc">Verify tự động bắt đầu ngay khi vào màn (không cần bấm gì) — đúng với hành vi tự nhiên là user vừa rời Step ⑦ và muốn xử lý ngay claim chưa chắc nguồn.</p>
+      <div id="s1-progress" style="display:none">
+        <div class="progress-wrap">
+          <div class="progress-label" id="s1-plabel">Đang kiểm tra nguồn cho 12 claims... (0/12)</div>
+          <div class="progress-track"><div class="progress-fill" id="s1-pfill"></div></div>
+        </div>
+      </div>
+      <div id="s1-result" style="display:none">
+        <div class="header-line">
+          AI đã kiểm tra từng câu trong bài viết — 3 câu cần bạn xem lại.
+          <button class="info-btn" onclick="toggleHeaderDetail()" title="Xem chi tiết">ⓘ</button>
+        </div>
+        <div class="header-detail" id="s1-header-detail">Mỗi câu được gắn 1 trong 4 mức: <b>Đã xác minh</b> / <b>Xác minh một phần</b> / <b>Không xác minh được</b> / <b>Cần bạn xem lại</b>. Các câu đã xác minh được tự động giữ; chỉ những câu AI không chắc mới cần bạn quyết định.</div>
+        <button class="legend-toggle" onclick="toggleLegend()" id="s1-legend-toggle">ⓘ Giải thích nhãn màu</button>
+        <div class="legend collapsed" id="s1-legend">
+          <span><span class="dot" style="background:var(--green)"></span> Supported (snippet/arxiv)</span>
+          <span><span class="dot" style="background:var(--orange)"></span> Partially Supported</span>
+          <span><span class="dot" style="background:var(--red)"></span> Unsupported</span>
+          <span><span class="dot" style="background:#caa83b"></span> Case C — chưa đủ dữ liệu</span>
+          <span><span class="dot" style="background:var(--priority)"></span> Ưu tiên xem (contrasting intent)</span>
+        </div>
+
+        <div class="progress-counter" id="s1-progress-counter"><span class="ring"></span> <span id="s1-progress-text">0/3 claim cần xem đã xử lý</span></div>
+
+        <div class="activation-banner" id="s1-activation-banner">
+          ✅ <b>Theme này đã verify xong</b> — toàn bộ claim cần xem đã được xử lý, bạn có thể tự tin đưa vào bài viết.
+          <div class="cta"><button class="btn primary" onclick="s1NextTheme()">Verify theme tiếp theo →</button></div>
+        </div>
+
+        <div class="claim-list" id="s1-actionable-list">
+          <div class="claim-card" data-claim-id="c1">
+            <p class="claim-text">"Phương pháp RAG giảm đáng kể tỉ lệ hallucination trong sinh nội dung học thuật."</p>
+            <span class="badge orange">◐ Partially Supported</span><span class="badge gray" style="background:var(--blue-bg);color:var(--blue)">arxiv</span>
+            <div class="row-actions">
+              <button class="btn small" onclick="resolveCard(this,'Đã giữ')">Giữ nguyên</button>
+              <button class="btn small" onclick="resolveCard(this,'Đang chỉnh sửa')">Sửa claim</button>
+              <button class="btn small danger" onclick="resolveCard(this,'Đã xóa')">Xóa</button>
+            </div>
+            <div class="resolved-tag" style="display:none"></div>
+          </div>
+          <div class="claim-card" data-claim-id="c2">
+            <p class="claim-text">"Citation snowballing đảm bảo độ phủ tương đương review thủ công trên mọi lĩnh vực."</p>
+            <span class="badge orange">◐ Partially Supported</span><span class="badge gray" style="background:var(--blue-bg);color:var(--blue)">arxiv</span>
+            <div class="row-actions">
+              <button class="btn small" onclick="resolveCard(this,'Đã giữ')">Giữ nguyên</button>
+              <button class="btn small" onclick="resolveCard(this,'Đang chỉnh sửa')">Sửa claim</button>
+              <button class="btn small danger" onclick="resolveCard(this,'Đã xóa')">Xóa</button>
+            </div>
+            <div class="resolved-tag" style="display:none"></div>
+          </div>
+          <div class="claim-card" data-claim-id="c3">
+            <p class="claim-text">"Mô hình SPECTER2 luôn vượt trội SPECTER v1 trong mọi domain học thuật."</p>
+            <span class="badge gray">◌ Chưa đủ dữ liệu để xác minh</span><span class="badge gray" style="background:var(--blue-bg);color:var(--blue)">abstract</span>
+            <div class="row-actions">
+              <button class="btn small" onclick="resolveCard(this,'Đã giữ')">Giữ nguyên</button>
+              <button class="btn small" onclick="resolveCard(this,'Đang chỉnh sửa')">Sửa claim</button>
+              <button class="btn small danger" onclick="resolveCard(this,'Đã xóa')">Xóa</button>
+            </div>
+            <div class="resolved-tag" style="display:none"></div>
+          </div>
+        </div>
+
+        <button class="auto-kept-toggle" onclick="toggleAutoKept()">▾ Xem 8 claims đã được AI tự động giữ lại</button>
+        <div class="auto-kept-list" id="s1-auto-kept-list">
+          <div class="claim-card">
+            <p class="claim-text">"Mô hình SPECTER2 cải thiện độ chính xác truy hồi văn bản học thuật so với SPECTER v1."</p>
+            <span class="badge green">✓ Supported</span><span class="badge gray" style="background:var(--blue-bg);color:var(--blue)">snippet</span>
+            <button class="src-link" onclick="toggleEv(this)">Xem nguồn</button>
+            <div class="evidence-box"><div class="lbl">Trích đoạn nguồn (Semantic Scholar snippet)</div>"...SPECTER2 adapter-based embeddings show consistent improvement in retrieval precision over the original SPECTER model across benchmark tasks..."</div>
+            <div class="resolved-tag">✓ Đã tự động giữ lại</div>
+          </div>
+          <div class="claim-card">
+            <p class="claim-text">"Citation snowballing giúp mở rộng pool paper liên quan mà không cần curation thủ công."</p>
+            <span class="badge green">✓ Supported</span><span class="badge gray" style="background:var(--blue-bg);color:var(--blue)">arxiv</span>
+            <button class="src-link" onclick="toggleEv(this)">Xem nguồn</button>
+            <div class="evidence-box"><div class="lbl">Trích đoạn nguồn (ar5iv fulltext)</div>"...the snowballing procedure automatically expands the candidate pool via citation links, reducing manual curation effort while preserving relevance..."</div>
+            <div class="resolved-tag">✓ Đã tự động giữ lại</div>
+          </div>
+          <div class="resolved-tag" style="display:block;margin-top:6px">+ 6 claims khác đã tự động giữ (ẩn để rút ngắn demo)</div>
+        </div>
+
+        <div class="summary-line">8 claims tự động giữ · 3 claims cần bạn xem · 1 claim đã tự xóa</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: PARTIALLY SUPPORTED -->
+  <div class="screen" data-screen="2">
+    <div class="panel">
+      <h2>Kịch bản 2 — Partially Supported (P2)</h2>
+      <p class="desc">Nguồn chỉ khớp một phần claim. AI không diễn giải hộ — chỉ hiển thị song song để user tự so sánh.</p>
+      <div class="claim-card">
+        <span class="badge orange">◐ Partially Supported</span><span class="badge gray" style="background:var(--blue-bg);color:var(--blue)">arxiv</span>
+        <div class="compare-grid" style="margin-top:10px">
+          <div class="compare-box"><div class="lbl">Claim viết</div>"Model X giảm 40% latency trong mọi tình huống triển khai."</div>
+          <div class="compare-box"><div class="lbl">Nguồn tìm được</div>"Model X giảm latency 40% trong benchmark A (batch size = 1, GPU T4)."</div>
+        </div>
+        <div class="header-note" style="margin-top:8px">AI thấy nguồn chỉ khớp một phần với claim này — có thể do claim tổng quát hóa quá mức, hoặc do nguồn chưa đủ chi tiết.</div>
+        <div class="row-actions">
+          <button class="btn success" onclick="markChoice(this,'Đã chọn: Giữ nguyên')">Giữ nguyên</button>
+          <button class="btn" onclick="openEdit(this)">Sửa claim</button>
+          <button class="btn danger" onclick="markChoice(this,'Đã chọn: Xóa')">Xóa</button>
+        </div>
+        <textarea class="edit-box" placeholder="Sửa lại claim cho khớp với nguồn, ví dụ: 'Model X giảm 40% latency trong benchmark A.'"></textarea>
+        <div class="resolved-tag" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: AUTO-DELETE UNSUPPORTED -->
+  <div class="screen" data-screen="3">
+    <div class="panel">
+      <h2>Kịch bản 3 — AI tự xóa claim Unsupported (P3 — Agency boundary)</h2>
+      <p class="desc">Nguồn xác nhận mâu thuẫn → AI tự xóa (Act có giám sát), nhưng luôn hiện log + cho khôi phục ngay.</p>
+      <div class="claim-list">
+        <div class="claim-card"><p class="claim-text">"Phương pháp Y vượt trội mọi baseline trong tác vụ summarization."</p><span class="badge green">✓ Supported</span></div>
+        <div class="deleted-line" id="s3-line">
+          ⚠️ Đã tự động xóa 1 câu do không tìm được nguồn ủng hộ — <button class="src-link" onclick="toggleDel()">Xem chi tiết</button>
+          <div class="deleted-detail" id="s3-detail">
+            <p class="claim-text strike">"Phương pháp Z đã được chứng minh là an toàn tuyệt đối trong mọi pipeline production."</p>
+            <div class="lbl" style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">Lý do</div>
+            <p style="font-size:12.5px;margin:4px 0 10px">Nguồn nói "Phương pháp Z giảm rủi ro lỗi trong một số trường hợp thử nghiệm" — mâu thuẫn với claim "an toàn tuyệt đối / mọi pipeline".</p>
+            <div class="row-actions">
+              <button class="btn success" onclick="restoreClaim()">↺ Khôi phục</button>
+              <button class="btn" onclick="confirmDelete()">Đồng ý xóa</button>
+            </div>
+            <div class="resolved-tag" id="s3-resolved" style="margin-top:8px"></div>
+          </div>
+        </div>
+        <div class="claim-card"><p class="claim-text">"Hybrid search (BM25 + semantic) cải thiện recall so với chỉ dùng semantic search."</p><span class="badge green">✓ Supported</span></div>
+      </div>
+      <div class="tab-bar" style="margin-top:16px">
+        <button class="active" id="s3-tab-main" onclick="switchTab3('main')">Danh sách chính</button>
+        <button id="s3-tab-deleted" onclick="switchTab3('deleted')">Đã xóa tự động (1)</button>
+      </div>
+      <div class="tabpane active" id="s3-pane-main"><p style="font-size:12.5px;color:var(--muted)">(Danh sách claim hiển thị phía trên)</p></div>
+      <div class="tabpane" id="s3-pane-deleted">
+        <div class="claim-card"><p class="claim-text strike">"Phương pháp Z đã được chứng minh là an toàn tuyệt đối trong mọi pipeline production."</p><span class="badge red">✗ Unsupported — đã xóa</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 4: CASE C / ABSTRACT ONLY -->
+  <div class="screen" data-screen="4">
+    <div class="panel">
+      <h2>Kịch bản 4 — Case C: chỉ có abstract (P4 — Uncertainty)</h2>
+      <p class="desc">Thiếu toàn văn → AI không thể xác minh sâu, nhưng KHÔNG có nghĩa claim sai. Badge và banner tách riêng để không gây hiểu lầm.</p>
+      <div class="toggle-line">Demo: <button class="btn small" onclick="toggleBanner()">Bật/tắt banner (giả lập >30% claim là Case C)</button></div>
+      <div class="banner" id="s4-banner">⚠ Theme này có nhiều nguồn không có toàn văn công khai — AI không thể xác minh sâu. Bạn nên tự kiểm tra kỹ hơn các claim được đánh dấu "Chưa đủ dữ liệu".</div>
+      <div class="claim-list">
+        <div class="claim-card">
+          <p class="claim-text">"Nghiên cứu của Nguyễn et al. (2019) cho thấy phương pháp truyền thống có hạn chế về khả năng mở rộng."</p>
+          <span class="badge gray">◌ Chưa đủ dữ liệu để xác minh</span><span class="badge gray" style="background:var(--blue-bg);color:var(--blue)">abstract</span>
+          <button class="src-link" onclick="toggleEv(this)">Xem abstract</button>
+          <div class="evidence-box"><div class="lbl">Abstract gốc</div>"This paper surveys scalability limitations of conventional methods in large-scale deployment scenarios..."</div>
+          <div class="header-note" style="margin-top:8px">AI chỉ tìm được tóm tắt (abstract) của nguồn này, không có toàn văn — nên không thể xác minh chi tiết. Không có nghĩa là claim sai.</div>
+          <div class="row-actions">
+            <button class="btn success" onclick="markChoice(this,'Đã chọn: Giữ')">Giữ</button>
+            <button class="btn danger" onclick="markChoice(this,'Đã chọn: Xóa')">Xóa</button>
+          </div>
+          <div class="resolved-tag" style="margin-top:6px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 5: CONTRASTING INTENT + RECOVERY -->
+  <div class="screen" data-screen="5">
+    <div class="panel">
+      <h2>Kịch bản 5 — AI đoán sai "contrasting intent" + vòng Feedback/Recovery (P5/P6)</h2>
+      <p class="desc">Suy đoán ý định trái chiều có độ tin cậy thấp nhất trong pipeline — luôn cần Ask, và phản hồi cũ chỉ giảm priority, không tắt hẳn cảnh báo.</p>
+      <div class="claim-card" id="s5-card">
+        <p class="claim-text">"Tuy nhiên, phương pháp fine-tuning truyền thống vẫn tồn tại một số hạn chế đáng kể về chi phí tính toán."</p>
+        <span class="badge priority" id="s5-badge">🔺 Ưu tiên xem</span>
+        <div class="header-note" style="margin-top:8px">Câu này có vẻ trái chiều với phần lập luận chung của theme — AI đẩy lên ưu tiên để bạn xác nhận có đúng ý không.</div>
+        <div class="row-actions">
+          <button class="btn success" onclick="s5choice('agree')">Đồng ý</button>
+          <button class="btn danger" onclick="s5choice('disagree')">Không đồng ý</button>
+        </div>
+        <div class="feedback-box" id="s5-feedback">
+          <textarea class="input-reason" rows="2" placeholder="Bạn có thể cho biết vì sao không? (không bắt buộc)"></textarea>
+          <button class="btn small primary" style="margin-top:6px" onclick="s5submit()">Gửi phản hồi</button>
+        </div>
+        <div class="resolved-tag" id="s5-resolved" style="margin-top:8px"></div>
+      </div>
+      <div class="toggle-line" style="margin-top:14px">Demo bước sau: <button class="btn small" id="s5-next-theme" onclick="s5nextTheme()" disabled>▶ Verify theme tiếp theo (mô phỏng pattern lặp lại)</button></div>
+      <div class="note-learn" id="s5-learn">Trước đó bạn đã đánh dấu 1 case tương tự là "không phải lỗi" — AI vẫn đẩy lên review vì muốn chắc chắn, nhưng đã giảm độ ưu tiên.</div>
+    </div>
+  </div>
+
+  <footer class="notebox">
+    Prototype này mô phỏng trạng thái & tương tác (không kết nối backend/LLM thật) — đi kèm với file báo cáo <code>day18_lab_claim_verification_design.md</code> chứa đầy đủ rationale, bảng Act/Ask/Don't Act, feedback matrix và 10-câu hỏi thiết kế cho từng kịch bản.
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const screens=[1,2,3,4,5];
+const titles={1:"1. Onboarding",2:"2. Partial",3:"3. Auto-delete",4:"4. Case C",5:"5. Recovery"};
+const navEl=document.getElementById('nav');
+screens.forEach(n=>{
+  const b=document.createElement('button');
+  b.textContent=titles[n];
+  b.dataset.n=n;
+  if(n===1)b.classList.add('active');
+  b.onclick=()=>showScreen(n);
+  navEl.appendChild(b);
+});
+// --- Tracking instrumentation (demo): console.log thay cho gọi analytics thật ---
+function track(event, props){
+  console.log('[track]', event, {timestamp:new Date().toISOString(), theme_id:'theme-001', session_id:'demo-session', ...props});
+}
+
+let s1Started=false;
+let s1Resolved=0;
+const S1_TOTAL_ACTIONABLE=3;
+
+function s1AutoStartVerification(){
+  if(s1Started) return; // tránh ghi trùng verification_started khi quay lại màn 1 trong cùng phiên
+  s1Started=true;
+  track('verification_started', {total_claims:12});
+  document.getElementById('s1-progress').style.display='block';
+  let i=0;
+  const fill=document.getElementById('s1-pfill');
+  const label=document.getElementById('s1-plabel');
+  const timer=setInterval(()=>{
+    i++;
+    fill.style.width=(i/12*100)+'%';
+    label.textContent=`Đang kiểm tra nguồn cho 12 claims... (${i}/12)`;
+    if(i>=12){
+      clearInterval(timer);
+      setTimeout(()=>{
+        document.getElementById('s1-progress').style.display='none';
+        document.getElementById('s1-result').style.display='block';
+        toast('Verify hoàn tất!');
+        // 3 claim cần xem được flag ngay khi kết quả hiển thị
+        ['c1','c2','c3'].forEach(id=>track('claim_flagged',{claim_id:id}));
+      },300);
+    }
+  },120);
+}
+// Verify tự chạy ngay khi vào màn — không cần user bấm nút khởi động
+s1AutoStartVerification();
+
+function showScreen(n){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active', +s.dataset.screen===n));
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active', +b.dataset.n===n));
+}
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+function toggleEv(btn){
+  const box=btn.parentElement.querySelector('.evidence-box');
+  box.classList.toggle('open');
+}
+
+function resolveCard(btn,label){
+  const card=btn.closest('.claim-card');
+  const claimId=card.dataset.claimId;
+  const alreadyResolved=card.querySelector('.row-actions').style.display==='none';
+  card.querySelector('.row-actions').style.display='none';
+  const tag=card.querySelector('.resolved-tag');
+  tag.style.display='block'; tag.textContent=(label==='Đã xóa'?'✓ ':'✓ ')+label;
+  toast(label);
+
+  // Chỉ ghi claim_resolved khi đây là claim có data-claim-id (thuộc nhóm cần xem ở Screen 1)
+  // và chưa từng được resolve trong phiên này — tránh ghi trùng (acceptance criteria #1, #2).
+  if(claimId && !alreadyResolved){
+    track('claim_resolved', {claim_id:claimId, action_type:label});
+    s1Resolved++;
+    updateS1Progress();
+  }
+}
+
+function updateS1Progress(){
+  const counter=document.getElementById('s1-progress-counter');
+  const text=document.getElementById('s1-progress-text');
+  text.textContent=`${s1Resolved}/${S1_TOTAL_ACTIONABLE} claim cần xem đã xử lý`;
+  if(s1Resolved>=S1_TOTAL_ACTIONABLE){
+    counter.classList.add('done');
+    track('theme_activated', {total_claims_resolved:s1Resolved});
+    document.getElementById('s1-activation-banner').classList.add('show');
+  }
+}
+
+function toggleHeaderDetail(){
+  document.getElementById('s1-header-detail').classList.toggle('open');
+}
+function toggleLegend(){
+  document.getElementById('s1-legend').classList.toggle('collapsed');
+}
+function toggleAutoKept(){
+  const list=document.getElementById('s1-auto-kept-list');
+  list.classList.toggle('open');
+}
+function s1NextTheme(){
+  toast('Mô phỏng: chuyển sang theme tiếp theo (Step ⑨)');
+}
+
+function markChoice(btn,label){
+  const card=btn.closest('.claim-card');
+  card.querySelector('.row-actions').style.display='none';
+  const tag=card.querySelector('.resolved-tag');
+  tag.textContent=label;
+  toast(label);
+}
+
+function openEdit(btn){
+  const card=btn.closest('.claim-card');
+  const box=card.querySelector('.edit-box');
+  box.classList.add('open');
+  box.value="Model X giảm 40% latency trong benchmark A.";
+  card.querySelector('.row-actions').style.display='none';
+  card.querySelector('.resolved-tag').textContent='✏️ Đang sửa — bấm ngoài ô để lưu (demo)';
+  toast('Đã mở ô sửa claim');
+}
+
+function toggleDel(){ document.getElementById('s3-detail').classList.toggle('open'); }
+function restoreClaim(){
+  document.getElementById('s3-line').style.display='none';
+  document.getElementById('s3-resolved').textContent='';
+  switchTab3('main');
+  toast('Đã khôi phục claim');
+}
+function confirmDelete(){
+  document.getElementById('s3-resolved').textContent='✓ Đã xác nhận xóa';
+  toast('Đã đồng ý xóa — vẫn lưu trong tab "Đã xóa tự động"');
+}
+function switchTab3(which){
+  document.getElementById('s3-tab-main').classList.toggle('active',which==='main');
+  document.getElementById('s3-tab-deleted').classList.toggle('active',which==='deleted');
+  document.getElementById('s3-pane-main').classList.toggle('active',which==='main');
+  document.getElementById('s3-pane-deleted').classList.toggle('active',which==='deleted');
+}
+
+function toggleBanner(){ document.getElementById('s4-banner').classList.toggle('show'); }
+
+function s5choice(type){
+  const card=document.getElementById('s5-card');
+  card.querySelector('.row-actions').style.display='none';
+  if(type==='agree'){
+    document.getElementById('s5-badge').textContent='✓ Đã xác nhận: cố ý trái chiều';
+    document.getElementById('s5-badge').className='badge green';
+    document.getElementById('s5-resolved').textContent='Đồng ý — không cần xử lý thêm';
+    document.getElementById('s5-next-theme').disabled=false;
+    toast('Đã ghi nhận: Đồng ý');
+  } else {
+    document.getElementById('s5-feedback').classList.add('open');
+  }
+}
+function s5submit(){
+  document.getElementById('s5-badge').remove ? null : null;
+  document.getElementById('s5-feedback').classList.remove('open');
+  document.getElementById('s5-resolved').textContent='Đã gửi: "Không đồng ý" — badge ưu tiên đã ẩn cho session này';
+  document.getElementById('s5-badge').style.display='none';
+  document.getElementById('s5-next-theme').disabled=false;
+  toast('Đã ghi nhận phản hồi — cảm ơn bạn!');
+}
+function s5nextTheme(){
+  document.getElementById('s5-learn').classList.add('show');
+  toast('Mô phỏng: theme tiếp theo, pattern tương tự xuất hiện lại với priority đã giảm');
+}
+</script>
+</body>
+</html>
